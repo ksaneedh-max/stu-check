@@ -1,74 +1,78 @@
 exports.extract = async (page) => {
 
-  let marksFrame = null;
+  let attendanceFrame = null;
+
+  /* ---------- FIND FRAME WITH ATTENDANCE TABLE ---------- */
 
   for (const frame of page.frames()) {
-    const tables = await frame.locator("table").count();
 
-    if (tables > 1) {
-      marksFrame = frame;
-      break;
-    }
+    try {
+
+      const rows = await frame.locator("table tbody tr").count();
+
+      if (rows > 0) {
+        attendanceFrame = frame;
+        break;
+      }
+
+    } catch {}
+
   }
 
-  if (!marksFrame) {
-    return { error: "Marks frame not found" };
+  if (!attendanceFrame) {
+    return { courses: [] };
   }
 
-  return marksFrame.evaluate(() => {
+  /* ---------- SCRAPE DATA ---------- */
 
-    const rows = document.querySelectorAll("table > tbody > tr");
+  return attendanceFrame.evaluate(() => {
 
-    const results = [];
+    const rows = document.querySelectorAll("table tbody tr");
 
-    rows.forEach((row, index) => {
+    const data = [];
 
-      if (index === 0) return;
+    rows.forEach(row => {
 
       const cols = row.querySelectorAll("td");
 
-      if (cols.length < 3) return;
+      /* ---------- SKIP HEADER OR INVALID ROWS ---------- */
+
+      if (!cols || cols.length < 9) return;
 
       const code = cols[0].innerText.trim();
-      const type = cols[1].innerText.trim();
-      const perfCell = cols[2];
+      const title = cols[1].innerText.trim();
+      const faculty = cols[3].innerText.trim();
+      const slot = cols[4].innerText.trim();
+      const room = cols[5].innerText.trim();
 
-      const subject = {
+      const conductedText = cols[6].innerText.trim();
+      const absentText = cols[7].innerText.trim();
+      const attendanceText = cols[8].innerText.trim();
+
+      const conducted = parseInt(conductedText);
+      const absent = parseInt(absentText);
+
+      /* ---------- IGNORE BAD ROWS ---------- */
+
+      if (isNaN(conducted) || code === "" || title === "") {
+        return;
+      }
+
+      data.push({
         code,
-        title: code + " (" + type + ")",
-        components: [],
-        total: 0,
-        max: 0
-      };
-
-      const compCells = perfCell.querySelectorAll("td");
-
-      compCells.forEach(cell => {
-
-        const strong = cell.querySelector("strong");
-
-        if (!strong) return;
-
-        const header = strong.innerText.trim();
-        const scoreText = cell.innerText.replace(header, "").trim();
-
-        const parts = header.split("/");
-
-        const name = parts[0];
-        const max = parseFloat(parts[1]) || 0;
-        const score = parseFloat(scoreText) || 0;
-
-        subject.components.push({ name, score, max });
-
-        subject.total += score;
-        subject.max += max;
+        title,
+        faculty,
+        slot,
+        room,
+        conducted,
+        absent,
+        attendance: attendanceText
       });
 
-      if (subject.components.length > 0) {
-        results.push(subject);
-      }
     });
 
-    return { subjects: results };
+    return { courses: data };
+
   });
+
 };
