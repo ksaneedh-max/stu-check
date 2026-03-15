@@ -1,11 +1,21 @@
 const service = require("./marks.service");
 
 exports.getMarks = async (req, res) => {
+
   try {
-    const data = await service.getMarks();
+
+    const sessionId = req.session.id;
+
+    const data = await service.getMarks(sessionId);
+
     res.json(data);
+
   } catch (err) {
-    console.log("MARKS ERROR:", err);
-    res.json({ error: "Marks fetch failed" });
+
+    res.status(500).json({
+      error: err.message
+    });
+
   }
+
 };
