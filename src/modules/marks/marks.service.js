@@ -1,16 +1,32 @@
 const { ensureBrowser, getPage } = require("../../browser/browserManager");
 const scraper = require("./marks.scraper");
+const PQueue = require("p-queue").default;
 
-async function getMarks() {
+/* ---------- SCRAPER QUEUE ---------- */
+const queue = new PQueue({ concurrency: 5 });
+
+async function getMarks(sessionId) {
+
   await ensureBrowser();
 
-  const page = getPage();
+  const page = getPage(sessionId);
 
-  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  if (!page) {
+    throw new Error("User not logged in");
+  }
 
-  await page.waitForTimeout(2000);
+  return queue.add(async () => {
 
-  return scraper.extract(page);
+    await page.evaluate(() => {
+      window.scrollTo(0, document.body.scrollHeight);
+    });
+
+    await page.waitForSelector("table");
+
+    return scraper.extract(page);
+
+  });
+
 }
 
 module.exports = { getMarks };
