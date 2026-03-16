@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Stu-Check</title>
+
+<link rel="stylesheet" href="styles.css">
+
+</head>
+
+<body>
+
+
+<!-- ================= SPLASH SCREEN ================= -->
+
+<div id="startup">
+
+<h1 class="logo">Stu-Check</h1>
+
+<div class="spinner"></div>
+
+<p>Loading dashboard...</p>
+
+</div>
+
+
+
+<!-- ================= MAIN APP ================= -->
+
+<div id="app" class="hidden">
+
+
+<!-- ================= NAVBAR ================= -->
+
+<nav class="navbar">
+
+<div class="nav-left">
+Stu-Check
+</div>
+
+<div class="nav-right">
+
+<button onclick="logout()" class="logoutBtn">
+Logout
+</button>
+
+</div>
+
+</nav>
+
+
+
+<!-- ================= MAIN CONTAINER ================= -->
+
+<div class="container">
+
+
+<!-- ================= LOGIN SECTION ================= -->
+
+<div id="loginSection" class="card login-card hidden">
+
+<h2>Login to SRM</h2>
+
+<input
+id="email"
+type="text"
+placeholder="SRM Email"
+/>
+
+<input
+id="password"
+type="password"
+placeholder="Password"
+/>
+
+<button onclick="login()" class="primary">
+Login
+</button>
+
+</div>
+
+
+
+<!-- ================= ACTION BUTTONS ================= -->
+
+<div id="actionSection" class="hidden action-bar">
+
+<button onclick="attendance()" class="primary">
+Attendance
+</button>
+
+<button onclick="marks()" class="secondary">
+Marks
+</button>
+
+<button onclick="timetable()" class="secondary">
+Timetable
+</button>
+
+<button onclick="loadProfile()" class="primary">
+Profile
+</button>
+
+<button onclick="calendar()" class="secondary">
+Calendar
+</button>
+
+</div>
+
+
+
+<!-- ================= LOADER ================= -->
+
+<div id="loader" class="hidden center">
+
+<div class="spinner"></div>
+
+</div>
+
+
+
+<!-- ================= RESULT AREA ================= -->
+
+<div id="result" class="grid"></div>
+
+
+</div>
+
+</div>
+
+
+
+<!-- ================= SCRIPT ================= -->
+
+<script src="app.js"></script>
+<script src="timetable.js"></script>
+<script src="profile.js"></script>
+<script src="calendar.js"></script>
+
+</body>
+
+</html>
