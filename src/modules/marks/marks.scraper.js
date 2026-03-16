@@ -2,18 +2,48 @@ exports.extract = async (page) => {
 
   let marksFrame = null;
 
-  for (const frame of page.frames()) {
-    const tables = await frame.locator("table").count();
+  /* ---------- FIND FRAME WITH MARKS TABLE ---------- */
 
-    if (tables > 1) {
-      marksFrame = frame;
-      break;
+  for (let i = 0; i < 10; i++) {
+
+    for (const frame of page.frames()) {
+
+      try {
+
+        const tables = await frame.locator("table").count();
+
+        if (tables > 1) {
+          marksFrame = frame;
+          break;
+        }
+
+      } catch {}
+
     }
+
+    if (marksFrame) break;
+
+    await page.waitForTimeout(300);
+
   }
 
   if (!marksFrame) {
-    return { error: "Marks frame not found" };
+    return { subjects: [] };
   }
+
+  /* ---------- WAIT FOR ROWS ---------- */
+
+  try {
+    await marksFrame.waitForSelector("table > tbody > tr", { timeout: 10000 });
+  } catch {
+    return { subjects: [] };
+  }
+
+  /* ---------- STABILIZATION DELAY ---------- */
+
+  await page.waitForTimeout(300);
+
+  /* ---------- SCRAPE DATA ---------- */
 
   return marksFrame.evaluate(() => {
 
@@ -62,13 +92,17 @@ exports.extract = async (page) => {
 
         subject.total += score;
         subject.max += max;
+
       });
 
       if (subject.components.length > 0) {
         results.push(subject);
       }
+
     });
 
     return { subjects: results };
+
   });
+
 };
