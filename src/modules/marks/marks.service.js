@@ -17,11 +17,34 @@ async function getMarks(sessionId) {
 
   return queue.add(async () => {
 
+    /* ---------- ENSURE ATTENDANCE PAGE (MARKS IS HERE) ---------- */
+
+    await page.evaluate(() => {
+      window.location.hash = "Page:My_Attendance";
+    });
+
+    /* ---------- SCROLL TO LOAD MARKS SECTION ---------- */
+
     await page.evaluate(() => {
       window.scrollTo(0, document.body.scrollHeight);
     });
 
-    await page.waitForSelector("table");
+    /* ---------- WAIT FOR TABLE ---------- */
+
+    await page.waitForSelector("table", { timeout: 15000 });
+
+    /* ---------- WAIT FOR ROWS ---------- */
+
+    await page.waitForFunction(() => {
+      const rows = document.querySelectorAll("table tbody tr");
+      return rows.length > 1;
+    }, { timeout: 15000 });
+
+    /* ---------- STABILIZATION DELAY ---------- */
+
+    await page.waitForTimeout(400);
+
+    /* ---------- SCRAPE ---------- */
 
     return scraper.extract(page);
 
