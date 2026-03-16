@@ -17,11 +17,50 @@ async function getAttendance(sessionId) {
 
   return queue.add(async () => {
 
-    await page.evaluate(() => {
-      window.location.hash = "Page:My_Attendance";
-    });
+    /* ---------- OPEN ATTENDANCE PAGE ---------- */
 
-    await page.waitForSelector("table");
+    await page.evaluate((hash) => {
+      location.hash = hash;
+    }, "Page:My_Attendance");
+    await page.waitForTimeout(1000);
+
+
+    /* ---------- WAIT FOR NETWORK TO SETTLE ---------- */
+
+    await page.waitForLoadState("networkidle");
+
+
+    /* ---------- WAIT UNTIL ATTENDANCE TABLE LOADS ---------- */
+
+    let attendanceFrame = null;
+
+    for (let attempt = 0; attempt < 40; attempt++) {
+
+      for (const frame of page.frames()) {
+
+        try {
+
+          const rowCount = await frame.locator("table tbody tr").count();
+
+          if (rowCount > 1) {
+            attendanceFrame = frame;
+            break;
+          }
+
+        } catch {}
+
+      }
+
+      if (attendanceFrame) break;
+
+      await page.waitForTimeout(250);
+    }
+
+    if (!attendanceFrame) {
+      throw new Error("Attendance table failed to load");
+    }
+
+    /* ---------- RUN SCRAPER ---------- */
 
     return scraper.extract(page);
 
