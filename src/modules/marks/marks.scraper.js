@@ -2,9 +2,56 @@ exports.extract = async (page) => {
 
   let marksFrame = null;
 
-  /* ---------- FIND FRAME WITH MARKS TABLE ---------- */
+  /* ---------- FAST PATH (table on main page) ---------- */
 
-  for (let i = 0; i < 10; i++) {
+  try {
+
+    const tables = await page.locator("table").count();
+
+    if (tables > 1) {
+      marksFrame = page;
+    }
+
+  } catch {}
+
+
+
+  /* ---------- FRAME SEARCH ---------- */
+
+  if (!marksFrame) {
+
+    for (let i = 0; i < 8; i++) {
+
+      for (const frame of page.frames()) {
+
+        try {
+
+          const tables = await frame.locator("table").count();
+
+          if (tables > 1) {
+            marksFrame = frame;
+            break;
+          }
+
+        } catch {}
+
+      }
+
+      if (marksFrame) break;
+
+      await page.waitForTimeout(300);
+
+    }
+
+  }
+
+
+
+  /* ---------- SLOW NETWORK FALLBACK ---------- */
+
+  if (!marksFrame) {
+
+    await page.waitForTimeout(2000);
 
     for (const frame of page.frames()) {
 
@@ -12,7 +59,7 @@ exports.extract = async (page) => {
 
         const tables = await frame.locator("table").count();
 
-        if (tables > 1) {
+        if (tables > 0) {
           marksFrame = frame;
           break;
         }
@@ -21,31 +68,42 @@ exports.extract = async (page) => {
 
     }
 
-    if (marksFrame) break;
-
-    await page.waitForTimeout(300);
-
   }
+
+
 
   if (!marksFrame) {
     return { subjects: [] };
   }
 
+
+
   /* ---------- WAIT FOR ROWS ---------- */
 
   try {
-    await marksFrame.waitForSelector("table > tbody > tr", { timeout: 10000 });
+
+    await marksFrame.waitForSelector(
+      "table > tbody > tr",
+      { timeout: 15000 }
+    );
+
   } catch {
+
     return { subjects: [] };
+
   }
+
+
 
   /* ---------- STABILIZATION DELAY ---------- */
 
   await page.waitForTimeout(300);
 
+
+
   /* ---------- SCRAPE DATA ---------- */
 
-  return marksFrame.evaluate(() => {
+  const data = await marksFrame.evaluate(() => {
 
     const rows = document.querySelectorAll("table > tbody > tr");
 
@@ -101,8 +159,57 @@ exports.extract = async (page) => {
 
     });
 
-    return { subjects: results };
+    return results;
 
   });
+
+
+
+  /* ---------- VALIDATION FALLBACK ---------- */
+
+  if (!data || data.length === 0) {
+
+    await page.waitForTimeout(1000);
+
+    const retryRows = await marksFrame.locator("table > tbody > tr").count();
+
+    if (retryRows > 1) {
+
+      return marksFrame.evaluate(() => {
+
+        const rows = document.querySelectorAll("table > tbody > tr");
+
+        const results = [];
+
+        rows.forEach((row, index) => {
+
+          if (index === 0) return;
+
+          const cols = row.querySelectorAll("td");
+
+          if (cols.length < 3) return;
+
+          const code = cols[0].innerText.trim();
+          const type = cols[1].innerText.trim();
+
+          results.push({
+            code,
+            title: code + " (" + type + ")",
+            components: []
+          });
+
+        });
+
+        return { subjects: results };
+
+      });
+
+    }
+
+  }
+
+
+
+  return { subjects: data };
 
 };
