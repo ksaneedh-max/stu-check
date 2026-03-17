@@ -8,6 +8,7 @@ const profileRoutes = require("./modules/profile/profile.route");
 const attendanceRoutes = require("./modules/attendance/attendance.route");
 const marksRoutes = require("./modules/marks/marks.route");
 const timetableRoutes = require("./modules/timetable/timetable.route");
+const calendarRoutes = require("./modules/calendar/calendar.route");
 
 const { isLoggedIn } = require("./modules/login/login.service");
 
@@ -130,6 +131,7 @@ app.use("/profile", profileRoutes);
 app.use("/attendance", attendanceRoutes);
 app.use("/marks", marksRoutes);
 app.use("/timetable", timetableRoutes);
+app.use("/calendar", calendarRoutes);
 
 /* ---------- EXPORT ---------- */
 
