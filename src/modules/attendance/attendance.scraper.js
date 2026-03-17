@@ -4,29 +4,96 @@ exports.extract = async (page) => {
 
     let attendanceFrame = null;
 
-    /* ---------- FIND FRAME ---------- */
+    /* ---------- FAST PATH (most cases) ---------- */
 
-    for (const frame of page.frames()) {
+    try {
 
-      try {
+      const table = await page.waitForSelector(
+        "table tbody tr",
+        { timeout: 5000 }
+      );
 
-        const table = await frame.waitForSelector(
-          "table tbody tr",
-          { timeout: 5000 }
-        );
+      if (table) {
+        attendanceFrame = page;
+      }
 
-        if (table) {
-          attendanceFrame = frame;
-          break;
-        }
+    } catch {}
 
-      } catch {}
+
+
+    /* ---------- FRAME SEARCH ---------- */
+
+    if (!attendanceFrame) {
+
+      for (const frame of page.frames()) {
+
+        try {
+
+          const table = await frame.waitForSelector(
+            "table tbody tr",
+            { timeout: 4000 }
+          );
+
+          if (table) {
+            attendanceFrame = frame;
+            break;
+          }
+
+        } catch {}
+
+      }
 
     }
+
+
+
+    /* ---------- SECOND PASS (SLOW NETWORK FALLBACK) ---------- */
+
+    if (!attendanceFrame) {
+
+      await page.waitForTimeout(3000);
+
+      for (const frame of page.frames()) {
+
+        try {
+
+          const table = await frame.waitForSelector(
+            "table tbody tr",
+            { timeout: 8000 }
+          );
+
+          if (table) {
+            attendanceFrame = frame;
+            break;
+          }
+
+        } catch {}
+
+      }
+
+    }
+
+
+
+    /* ---------- FINAL GLOBAL SEARCH ---------- */
+
+    if (!attendanceFrame) {
+
+      const table = await page.$("table tbody tr");
+
+      if (table) {
+        attendanceFrame = page;
+      }
+
+    }
+
+
 
     if (!attendanceFrame) {
       throw new Error("Attendance table not found");
     }
+
+
 
     /* ---------- SCRAPE ---------- */
 
@@ -72,6 +139,46 @@ exports.extract = async (page) => {
 
       }
     );
+
+
+
+    /* ---------- VALIDATION FALLBACK ---------- */
+
+    if (!courses || courses.length === 0) {
+
+      console.log("Attendance empty → retrying extraction");
+
+      const rows = await attendanceFrame.$$("table tbody tr");
+
+      if (rows.length > 1) {
+
+        const retry = [];
+
+        for (let i = 1; i < rows.length; i++) {
+
+          const cols = await rows[i].$$("td");
+          if (cols.length < 9) continue;
+
+          retry.push({
+            code: await cols[0].innerText(),
+            title: await cols[1].innerText(),
+            faculty: await cols[3].innerText(),
+            slot: await cols[4].innerText(),
+            room: await cols[5].innerText(),
+            conducted: parseInt(await cols[6].innerText()),
+            absent: parseInt(await cols[7].innerText()),
+            attendance: await cols[8].innerText()
+          });
+
+        }
+
+        return { courses: retry };
+
+      }
+
+    }
+
+
 
     return { courses };
 
